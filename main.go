@@ -37,6 +37,7 @@ func main() {
 	}
 	client := core.NewEasyConnectClient(vpnUrl, skipSsl)
 
+	t1 := time.Now()
 	var ip []byte
 	if twfId != "" {
 		if len(twfId) != 16 {
@@ -69,10 +70,12 @@ func main() {
 		}
 	}
 
+	t2 := time.Now()
+
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	log.Printf("Login success, your IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3])
+	log.Printf("Login success, your IP: %d.%d.%d.%d, consuming: %d ms", ip[0], ip[1], ip[2], ip[3], t2.Sub(t1).Milliseconds())
 
 	client.ServeSocks5(socksBind, debugDump)
 
