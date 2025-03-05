@@ -206,7 +206,7 @@ func LoginWeb(client *resty.Client, username, password string) (string, error) {
 	case loginResp.NextService == "auth/token" || loginResp.NextServiceSubType == "totp":
 		return authResp.TwfID, ERR_NEXT_AUTH_TOTP
 	case loginResp.NextService == "auth/hid":
-		return handleHIDAuth(client, authResp.TwfID)
+		return handleHIDAuth(client)
 	}
 
 	// 验证最终结果
@@ -222,7 +222,7 @@ func LoginWeb(client *resty.Client, username, password string) (string, error) {
 }
 
 // 处理 HID 认证
-func handleHIDAuth(client *resty.Client, twfID string) (string, error) {
+func handleHIDAuth(client *resty.Client) (string, error) {
 	hidResp := SubmitHIDResponse{}
 	hid := generateRandomHexMust(32, true)
 	macAddress := generateRandomHexMust(16, true)
@@ -246,11 +246,7 @@ func handleHIDAuth(client *resty.Client, twfID string) (string, error) {
 		return "", fmt.Errorf("HID auth failed with response: %#v\n", hidResp)
 	}
 
-	// 更新 TwfID
-	if hidResp.TwfID != "" {
-		twfID = hidResp.TwfID
-	}
-	return twfID, nil
+	return hidResp.TwfID, nil
 }
 
 // 解析 RSA 公钥
