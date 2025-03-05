@@ -28,11 +28,13 @@ type EasyConnectClient struct {
 }
 
 func GetAddressFormURL(uri *url.URL) string {
+	portString := uri.Port()
+	if portString != "" {
+		return fmt.Sprintf("%s:%s", uri.Host, portString)
+	}
 	var port = 80
-	if uri.Port() == "" {
-		if uri.Scheme == "https" {
-			port = 443
-		}
+	if uri.Scheme == "https" {
+		port = 443
 	}
 	return fmt.Sprintf("%s:%d", uri.Host, port)
 }
