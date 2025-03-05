@@ -225,7 +225,7 @@ func LoginWeb(client *resty.Client, username, password string) (string, error) {
 func handleHIDAuth(client *resty.Client) (string, error) {
 	hidResp := SubmitHIDResponse{}
 	hid := generateRandomHexMust(32, true)
-	macAddress := generateRandomHexMust(16, true)
+	macAddress := generateRandomMACMust()
 	hostname := randomString(20)
 	fmt.Println("generateRandomHexMust:", hid, "generateRandomHexMust:", macAddress, "hostname:", hostname)
 
