@@ -1,17 +1,23 @@
 package core
 
 import (
+	"crypto/tls"
 	"errors"
-	"net"
-
+	"fmt"
+	"github.com/go-resty/resty/v2"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
+	"net"
+	"net/http"
+	"net/url"
 )
 
 type EasyConnectClient struct {
-	queryConn net.Conn
-	clientIp  []byte
-	token     *[48]byte
-	twfId     string
+	httpClient *resty.Client
+	cookieJar  http.CookieJar
+	queryConn  net.Conn
+	clientIp   []byte
+	token      *[48]byte
+	twfId      string
 
 	endpoint *EasyConnectEndpoint
 	ipStack  *stack.Stack
@@ -21,10 +27,33 @@ type EasyConnectClient struct {
 	password string
 }
 
-func NewEasyConnectClient(server string) *EasyConnectClient {
-	return &EasyConnectClient{
-		server: server,
+func GetAddressFormURL(uri *url.URL) string {
+	var port = 80
+	if uri.Port() == "" {
+		if uri.Scheme == "https" {
+			port = 443
+		}
 	}
+	return fmt.Sprintf("%s:%d", uri.Host, port)
+}
+
+func NewEasyConnectClient(vpnUrl *url.URL, insecureSkipVerify bool) *EasyConnectClient {
+	cookieJar := NewMemoryCookieJar()
+	return &EasyConnectClient{
+		server:     GetAddressFormURL(vpnUrl),
+		cookieJar:  cookieJar,
+		httpClient: createRestyClient(vpnUrl.String(), insecureSkipVerify, cookieJar),
+	}
+}
+
+func createRestyClient(baseUrl string, insecureSkipVerify bool, jar http.CookieJar) *resty.Client {
+	return resty.New().
+		SetCookieJar(jar).
+		SetProxy("http://127.0.0.1:9000").
+		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
+		SetBaseURL(baseUrl).
+		SetHeader("User-Agent", "Mozilla/5.0").
+		SetRedirectPolicy(resty.NoRedirectPolicy())
 }
 
 func (client *EasyConnectClient) Login(username string, password string) ([]byte, error) {
@@ -32,7 +61,7 @@ func (client *EasyConnectClient) Login(username string, password string) ([]byte
 	client.password = password
 
 	// Web login part (Get TWFID & ECAgent Token => Final token used in binary stream)
-	twfId, err := WebLogin(client.server, client.username, client.password)
+	twfId, err := LoginWeb(client.httpClient, client.username, client.password)
 
 	// Store TWFID for AuthSMS
 	client.twfId = twfId
@@ -48,7 +77,7 @@ func (client *EasyConnectClient) AuthSMSCode(code string) ([]byte, error) {
 		return nil, errors.New("SMS Auth not required")
 	}
 
-	twfId, err := AuthSms(client.server, client.username, client.password, client.twfId, code)
+	twfId, err := SMSAuth(client.httpClient, client.twfId, code)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +90,7 @@ func (client *EasyConnectClient) AuthTOTP(code string) ([]byte, error) {
 		return nil, errors.New("TOTP Auth not required")
 	}
 
-	twfId, err := TOTPAuth(client.server, client.username, client.password, client.twfId, code)
+	twfId, err := TOTPAuth(client.httpClient, client.twfId, code)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +99,7 @@ func (client *EasyConnectClient) AuthTOTP(code string) ([]byte, error) {
 }
 
 func (client *EasyConnectClient) LoginByTwfId(twfId string) ([]byte, error) {
-	agentToken, err := ECAgentToken(client.server, twfId)
+	agentToken, err := GetECAgentToken(client.httpClient)
 	if err != nil {
 		return nil, err
 	}
