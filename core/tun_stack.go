@@ -11,12 +11,33 @@ import (
 )
 
 const defaultNIC tcpip.NICID = 1
-const defaultMTU uint32 = 1400
+
+var defaultMTU uint32 = 1400
 
 // implements LinkEndpoint
 type EasyConnectEndpoint struct {
 	dispatcher stack.NetworkDispatcher
 	OnRecv     func(buf []byte)
+}
+
+func (ep *EasyConnectEndpoint) SetMTU(mtu uint32) {
+	defaultMTU = mtu
+}
+
+func (ep *EasyConnectEndpoint) SetLinkAddress(addr tcpip.LinkAddress) {
+
+}
+
+func (ep *EasyConnectEndpoint) ParseHeader(packetBuffer *stack.PacketBuffer) bool {
+	return true
+}
+
+func (ep *EasyConnectEndpoint) Close() {
+
+}
+
+func (ep *EasyConnectEndpoint) SetOnCloseAction(f func()) {
+
 }
 
 func (ep *EasyConnectEndpoint) MTU() uint32 {
