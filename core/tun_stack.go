@@ -20,6 +20,10 @@ type EasyConnectEndpoint struct {
 	OnRecv     func(buf []byte)
 }
 
+func NewEasyConnectEndpoint() *EasyConnectEndpoint {
+	return &EasyConnectEndpoint{}
+}
+
 func (ep *EasyConnectEndpoint) SetMTU(mtu uint32) {
 	defaultMTU = mtu
 }

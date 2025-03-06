@@ -1,6 +1,8 @@
 package core
 
 import (
+	"EasierConnect/utils"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -18,7 +20,7 @@ func DumpHex(buf []byte) {
 	stdoutDumper.Write(buf)
 }
 
-func TLSConn(server string) (*tls.UConn, error) {
+func TLSConn(server string, insecureSkipVerify bool) (*tls.UConn, error) {
 	// dial vpn server
 	dialConn, err := net.Dial("tcp", server)
 	if err != nil {
@@ -28,6 +30,7 @@ func TLSConn(server string) (*tls.UConn, error) {
 
 	// using uTLS to construct a weird TLS Client Hello (required by Sangfor)
 	// The VPN and HTTP Server share port 443, Sangfor uses a special SessionId to distinguish them. (which is very stupid...)
+	// InsecureSkipVerify must is true
 	conn := tls.UClient(dialConn, &tls.Config{InsecureSkipVerify: true}, tls.HelloCustom)
 
 	random := make([]byte, 32)
@@ -44,8 +47,8 @@ func TLSConn(server string) (*tls.UConn, error) {
 	return conn, nil
 }
 
-func QueryIp(server string, token *[48]byte) ([]byte, *tls.UConn, error) {
-	conn, err := TLSConn(server)
+func QueryIp(server string, token *[48]byte, insecureSkipVerify bool) ([]byte, *tls.UConn, error) {
+	conn, err := TLSConn(server, insecureSkipVerify)
 	if err != nil {
 		debug.PrintStack()
 		return nil, nil, err
@@ -85,8 +88,8 @@ func QueryIp(server string, token *[48]byte) ([]byte, *tls.UConn, error) {
 	return reply[4:8], conn, nil
 }
 
-func BlockRXStream(server string, token *[48]byte, ipRev *[4]byte, ep *EasyConnectEndpoint, debug bool) error {
-	conn, err := TLSConn(server)
+func BlockRXStream(server string, token *[48]byte, ipRev *[4]byte, ep *EasyConnectEndpoint, debug bool, ctx context.Context, insecureSkipVerify bool) error {
+	conn, err := TLSConn(server, insecureSkipVerify)
 	if err != nil {
 		panic(err)
 	}
@@ -118,23 +121,30 @@ func BlockRXStream(server string, token *[48]byte, ipRev *[4]byte, ep *EasyConne
 	}
 
 	for {
-		n, err = conn.Read(reply)
+		select {
+		case <-ctx.Done():
+			conn.Close()
+			break
+		default:
+			n, err = conn.Read(reply)
 
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
+
+			ep.WriteTo(reply[:n])
+
+			if debug {
+				log.Printf("recv: read %d bytes", n)
+				DumpHex(reply[:n])
+			}
 		}
 
-		ep.WriteTo(reply[:n])
-
-		if debug {
-			log.Printf("recv: read %d bytes", n)
-			DumpHex(reply[:n])
-		}
 	}
 }
 
-func BlockTXStream(server string, token *[48]byte, ipRev *[4]byte, ep *EasyConnectEndpoint, debug bool) error {
-	conn, err := TLSConn(server)
+func BlockTXStream(server string, token *[48]byte, ipRev *[4]byte, ep *EasyConnectEndpoint, debug bool, ctx context.Context, insecureSkipVerify bool) error {
+	conn, err := TLSConn(server, insecureSkipVerify)
 	if err != nil {
 		return err
 	}
@@ -168,47 +178,68 @@ func BlockTXStream(server string, token *[48]byte, ipRev *[4]byte, ep *EasyConne
 	errCh := make(chan error)
 
 	ep.OnRecv = func(buf []byte) {
-		var n, err = conn.Write(buf)
-		if err != nil {
-			errCh <- err
-			return
-		}
+		select {
+		case <-ctx.Done():
+			conn.Close()
+			break
+		default:
+			var n, err = conn.Write(buf)
+			if err != nil {
+				errCh <- err
+				return
+			}
 
-		if debug {
-			log.Printf("send: wrote %d bytes", n)
-			DumpHex([]byte(buf[:n]))
+			if debug {
+				log.Printf("send: wrote %d bytes", n)
+				DumpHex([]byte(buf[:n]))
+			}
 		}
 	}
 
 	return <-errCh
 }
 
-func StartProtocol(endpoint *EasyConnectEndpoint, server string, token *[48]byte, ipRev *[4]byte, debug bool) {
-	RX := func() {
+func StartProtocol(endpoint *EasyConnectEndpoint, server string, token *[48]byte, ipRev1 []byte, debug bool, ctx context.Context, insecureSkipVerify bool) {
+	ipRev := (*[4]byte)(utils.ReversedSlices(ipRev1))
+
+	// 接收协程
+	rx := func() {
 		counter := 0
-		for counter < 5 {
-			err := BlockRXStream(server, token, ipRev, endpoint, debug)
-			if err != nil {
-				log.Print("Error occurred while recv, retrying: " + err.Error())
+		for counter < 3 {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				err := BlockRXStream(server, token, ipRev, endpoint, debug, ctx, insecureSkipVerify)
+				if err != nil {
+					log.Printf("接收错误: %v，重试中...", err)
+					counter++
+				}
 			}
-			counter += 1
 		}
-		panic("recv retry limit exceeded.")
+		log.Println("接收重试次数耗尽")
+		return
 	}
 
-	go RX()
-
-	TX := func() {
+	// 发送协程
+	tx := func() {
 		counter := 0
-		for counter < 5 {
-			err := BlockTXStream(server, token, ipRev, endpoint, debug)
-			if err != nil {
-				log.Print("Error occurred while send, retrying: " + err.Error())
+		for counter < 3 {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				err := BlockTXStream(server, token, ipRev, endpoint, debug, ctx, insecureSkipVerify)
+				if err != nil {
+					log.Printf("发送错误: %v，重试中...", err)
+					counter++
+				}
 			}
-			counter += 1
 		}
-		panic("send retry limit exceeded.")
+		log.Println("发送重试次数耗尽")
+		return
 	}
 
-	go TX()
+	go rx()
+	go tx()
 }

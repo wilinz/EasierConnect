@@ -2,20 +2,17 @@ package main
 
 import (
 	"EasierConnect/core"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/url"
 	"runtime"
-	"time"
-
-	"github.com/pquerna/otp/totp"
+	"strings"
 )
 
 func main() {
 	// CLI args
-	vpnUrlRaw, username, password, socksBind, twfId, totpKey, skipSsl := "", "", "", "", "", "", false
+	vpnUrlRaw, username, password, socksBind, twfId, totpKey, skipSsl, mode := "", "", "", "", "", "", false, ""
 	flag.StringVar(&vpnUrlRaw, "vpn-url", "", "EasyConnect vpn server url (e.g. https://vpn.nju.edu.cn, https://sslvpn.sysu.edu.cn:443)")
 	flag.StringVar(&username, "username", "", "Your username")
 	flag.StringVar(&password, "password", "", "Your password")
@@ -23,9 +20,19 @@ func main() {
 	flag.StringVar(&totpKey, "totp-key", "", "If provided, this program will automatically generate TOTP code using this key and and input it, instead of asking user.")
 	flag.StringVar(&socksBind, "socks-bind", ":1080", "The addr socks5 server listens on (e.g. 0.0.0.0:1080)")
 	flag.StringVar(&twfId, "twf-id", "", "Login using twfID captured (mostly for debug usage)")
+	flag.StringVar(&mode, "mode", "1", "socks run mode")
 	debugDump := false
 	flag.BoolVar(&debugDump, "debug-dump", false, "Enable traffic debug dump (only for debug usage)")
 	flag.Parse()
+
+	port := strings.Split(socksBind, ":")[1]
+
+	user := fmt.Sprintf("v=%s&u=%s", url.QueryEscape(vpnUrlRaw), url.QueryEscape(username))
+	fmt.Printf("socks5://%s:%s@localhost:%s\n", url.QueryEscape(user), password, port)
+	if mode == "2" {
+		core.ServeSocks52(socksBind)
+		return
+	}
 
 	if vpnUrlRaw == "" || ((username == "" || password == "") && twfId == "") {
 		log.Fatal("Missing required cli args, refer to `EasierConnect --help`.")
@@ -35,48 +42,11 @@ func main() {
 	if err != nil {
 		log.Fatal("vpn_url is invalid: ", vpnUrlRaw, err)
 	}
-	client := core.NewEasyConnectClient(vpnUrl, skipSsl)
-
-	t1 := time.Now()
-	var ip []byte
-	if twfId != "" {
-		if len(twfId) != 16 {
-			panic("len(twfid) should be 16!")
-		}
-		ip, err = client.LoginByTwfId(twfId)
-	} else {
-		ip, err = client.Login(username, password)
-		if errors.Is(err, core.ERR_NEXT_AUTH_SMS) {
-			fmt.Print(">>>Please enter your sms code<<<:")
-			smsCode := ""
-			fmt.Scan(&smsCode)
-
-			ip, err = client.AuthSMSCode(smsCode)
-		} else if errors.Is(err, core.ERR_NEXT_AUTH_TOTP) {
-			TOTPCode := ""
-
-			if totpKey == "" {
-				fmt.Print(">>>Please enter your TOTP Auth code<<<:")
-				fmt.Scan(&TOTPCode)
-			} else {
-				TOTPCode, err = totp.GenerateCode(totpKey, time.Now())
-				if err != nil {
-					panic(err)
-				}
-				log.Printf("Generated TOTP code %s", TOTPCode)
-			}
-
-			ip, err = client.AuthTOTP(TOTPCode)
-		}
-	}
-
-	t2 := time.Now()
+	client, err := core.NewEasyConnectClientByLogin(vpnUrl, username, password, twfId, totpKey, skipSsl)
 
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal("NewEasyConnectClientByLogin: ", err)
 	}
-	log.Printf("Login success, your IP: %d.%d.%d.%d, consuming: %d ms", ip[0], ip[1], ip[2], ip[3], t2.Sub(t1).Milliseconds())
-
 	client.ServeSocks5(socksBind, debugDump)
 
 	runtime.KeepAlive(client)
