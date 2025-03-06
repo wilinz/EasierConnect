@@ -33,6 +33,8 @@ type EasyConnectClient struct {
 	server   string
 	username string
 	password string
+
+	IsClosed bool
 }
 
 func GetAddressFormURL(uri *url.URL) string {
@@ -70,6 +72,11 @@ func createRestyClient(baseUrl string, insecureSkipVerify bool, jar http.CookieJ
 }
 
 func (client *EasyConnectClient) Close() error {
+
+	log.Println("正在关闭客户端")
+
+	client.IsClosed = true
+
 	var errs []error
 
 	// 取消所有通过context控制的协程
@@ -167,6 +174,9 @@ func (client *EasyConnectClient) LoginByTwfId(twfId string) ([]byte, error) {
 }
 
 func (client *EasyConnectClient) StartProtocol(debugDump bool) {
+	defer func() {
+		client.Close()
+	}()
 	// Link-level endpoint used in gvisor netstack
 	client.endpoint = NewEasyConnectEndpoint()
 	client.ipStack = SetupStack(client.clientIp, client.endpoint)
@@ -176,7 +186,7 @@ func (client *EasyConnectClient) StartProtocol(debugDump bool) {
 
 func (client *EasyConnectClient) ServeSocks5(socksBind string, debugDump bool) {
 	// Link-level endpoint used in gvisor netstack
-	client.StartProtocol(debugDump)
+	go client.StartProtocol(debugDump)
 	// Socks5 server
 	ServeSocks5(client.ipStack, client.clientIp, socksBind)
 }

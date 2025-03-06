@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -202,16 +203,25 @@ func BlockTXStream(server string, token *[48]byte, ipRev *[4]byte, ep *EasyConne
 func StartProtocol(endpoint *EasyConnectEndpoint, server string, token *[48]byte, ipRev1 []byte, debug bool, ctx context.Context, insecureSkipVerify bool) {
 	ipRev := (*[4]byte)(utils.ReversedSlices(ipRev1))
 
+	// 创建一个可取消的 context
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel() // 确保在函数退出时取消 context
+
 	// 接收协程
 	rx := func() {
 		counter := 0
-		for counter < 3 {
+		for counter < 1 {
 			select {
 			case <-ctx.Done():
 				return
 			default:
 				err := BlockRXStream(server, token, ipRev, endpoint, debug, ctx, insecureSkipVerify)
 				if err != nil {
+					if err == io.EOF {
+						log.Println("接收到 EOF，关闭协程")
+						cancel() // 取消 context，通知其他协程退出
+						return
+					}
 					log.Printf("接收错误: %v，重试中...", err)
 					counter++
 				}
@@ -224,13 +234,18 @@ func StartProtocol(endpoint *EasyConnectEndpoint, server string, token *[48]byte
 	// 发送协程
 	tx := func() {
 		counter := 0
-		for counter < 3 {
+		for counter < 1 {
 			select {
 			case <-ctx.Done():
 				return
 			default:
 				err := BlockTXStream(server, token, ipRev, endpoint, debug, ctx, insecureSkipVerify)
 				if err != nil {
+					if err == io.EOF {
+						log.Println("发送到 EOF，关闭协程")
+						cancel() // 取消 context，通知其他协程退出
+						return
+					}
 					log.Printf("发送错误: %v，重试中...", err)
 					counter++
 				}
@@ -242,4 +257,8 @@ func StartProtocol(endpoint *EasyConnectEndpoint, server string, token *[48]byte
 
 	go rx()
 	go tx()
+
+	// 等待 context 被取消
+	<-ctx.Done()
+	log.Println("所有协程已退出")
 }

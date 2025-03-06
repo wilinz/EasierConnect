@@ -105,7 +105,7 @@ func ServeSocks52(bindAddr string) {
 			upstreamClientKey := request.AuthContext.Payload[AuthContextPayloadUpstreamClientKey]
 			client, ok := auth.UpstreamClientPool.Get(upstreamClientKey)
 
-			if !ok {
+			if !ok || client.IsClosed {
 				return nil, errors.New("upstream connect closed")
 			}
 
@@ -172,7 +172,8 @@ func (a *CustomAuthenticator) Authenticate(reader io.Reader, writer io.Writer, u
 	}
 	key := fmt.Sprintf("%s->->->%s", userInfo.VPNURL, userInfo.Username)
 	client, ok := a.UpstreamClientPool.Get(key)
-	if !ok {
+	if !ok || client.IsClosed {
+		fmt.Println("用户不存在")
 		tries := 3
 		for i := 0; i < tries; i++ {
 			client, err = NewEasyConnectClientByLogin(userInfo.VPNURL, userInfo.Username, userInfo.Password, "", "", userInfo.SkipSSL)
@@ -180,13 +181,15 @@ func (a *CustomAuthenticator) Authenticate(reader io.Reader, writer io.Writer, u
 				if i == tries-1 {
 					return nil, err
 				}
+				time.Sleep(time.Millisecond * 200)
 			} else {
 				break
 			}
 		}
-		client.StartProtocol(false)
+		go client.StartProtocol(false)
 		a.UpstreamClientPool.Set(key, client)
 	}
+	fmt.Println("用户存在")
 	_, err = writer.Write([]byte{0x01, 0x00}) // success
 	if err != nil {
 		return nil, err
