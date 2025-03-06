@@ -1,10 +1,12 @@
 package core
 
 import (
+	"EasierConnect/utils"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"golang.org/x/exp/slices"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 	"net"
 	"net/http"
@@ -122,9 +124,11 @@ func (client *EasyConnectClient) ServeSocks5(socksBind string, debugDump bool) {
 	client.endpoint = &EasyConnectEndpoint{}
 	client.ipStack = SetupStack(client.clientIp, client.endpoint)
 
+	ip := slices.Clone(client.clientIp)
+	utils.ReverseSlices(ip)
+
 	// Sangfor Easyconnect protocol
-	StartProtocol(client.endpoint, client.server, client.token,
-		&[4]byte{client.clientIp[3], client.clientIp[2], client.clientIp[1], client.clientIp[0]}, debugDump)
+	StartProtocol(client.endpoint, client.server, client.token, (*[4]byte)(ip), debugDump)
 
 	// Socks5 server
 	ServeSocks5(client.ipStack, client.clientIp, socksBind)

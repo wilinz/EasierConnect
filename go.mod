@@ -9,6 +9,7 @@ require github.com/pquerna/otp v1.4.0
 require (
 	fyne.io/fyne/v2 v2.3.0
 	github.com/go-resty/resty/v2 v2.16.5
+	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	gvisor.dev/gvisor v0.0.0-20220901235040-6ca97ef2ce1c
 	tailscale.com v1.34.2
 )
