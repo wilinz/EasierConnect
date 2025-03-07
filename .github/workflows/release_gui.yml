@@ -23,7 +23,7 @@ jobs:
         run: |
           mkdir -p dist
           # 获取所有 Go 支持的平台列表，过滤出常见平台和架构
-          go tool dist list | grep -E "^(linux|darwin|windows)/(amd64|arm64)$" | while read platform; do
+          go tool dist list | grep -E "^(darwin|windows)/(amd64|arm64)$" | while read platform; do
             GOOS=${platform%%/*}
             GOARCH=${platform#*/}
             binary="ecapp_gui_${TAG}_${GOOS}_${GOARCH}"
