@@ -26,7 +26,7 @@ jobs:
           go tool dist list | grep -E "^(linux|darwin|windows)/" | while read platform; do
             GOOS=${platform%%/*}
             GOARCH=${platform#*/}
-            binary="myapp_${TAG}_${GOOS}_${GOARCH}"
+            binary="ecapp_${TAG}_${GOOS}_${GOARCH}"
             # 如果是 Windows 平台，追加 .exe 后缀
             if [ "$GOOS" = "windows" ]; then
               binary="${binary}.exe"
