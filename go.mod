@@ -42,7 +42,7 @@ require (
 	github.com/tevino/abool v1.2.0 // indirect
 	github.com/things-go/go-socks5 v0.0.5 // indirect
 	github.com/yuin/goldmark v1.4.1 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/image v0.0.0-20220601225756-64ec528b34cd // indirect
 	golang.org/x/mobile v0.0.0-20211207041440-4e6c2922fdee // indirect
 	golang.org/x/net v0.33.0 // indirect
