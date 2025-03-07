@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync/atomic"
 	"time"
 )
 
@@ -34,7 +35,29 @@ type EasyConnectClient struct {
 	username string
 	password string
 
-	IsClosed bool
+	CreatedAt   time.Time     // 客户端创建时间（只读）
+	LastUsed    atomic.Int64  // 最后使用时间（UnixNano）
+	MaxLifetime time.Duration // 最大存活时间（硬限制）
+	IdleTimeout time.Duration // 空闲超时（来自认证参数）
+	IsClosed    bool
+}
+
+// Touch 更新最后使用时间（并发安全）
+func (c *EasyConnectClient) Touch() {
+	c.LastUsed.Store(time.Now().UnixNano())
+}
+
+func (c *EasyConnectClient) IsExpired() bool {
+	now := time.Now()
+
+	// 最大生命周期检查
+	if now.Sub(c.CreatedAt) > c.MaxLifetime {
+		return true
+	}
+
+	// 空闲超时检查
+	lastUsed := time.Unix(0, c.LastUsed.Load())
+	return now.Sub(lastUsed) > c.IdleTimeout
 }
 
 func GetAddressFormURL(uri *url.URL) string {
@@ -58,13 +81,13 @@ func NewEasyConnectClient(vpnUrl *url.URL, insecureSkipVerify bool) *EasyConnect
 		httpClient: createRestyClient(vpnUrl.String(), insecureSkipVerify, cookieJar),
 		ctx:        ctx,
 		cancelFunc: cancel,
+		CreatedAt:  time.Now(),
 	}
 }
 
 func createRestyClient(baseUrl string, insecureSkipVerify bool, jar http.CookieJar) *resty.Client {
 	return resty.New().
 		SetCookieJar(jar).
-		SetProxy("http://127.0.0.1:9000").
 		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: insecureSkipVerify}).
 		SetBaseURL(baseUrl).
 		SetHeader("User-Agent", "Mozilla/5.0").
@@ -188,7 +211,7 @@ func (client *EasyConnectClient) ServeSocks5(socksBind string, debugDump bool) {
 	// Link-level endpoint used in gvisor netstack
 	go client.StartProtocol(debugDump)
 	// Socks5 server
-	ServeSocks5(client.ipStack, client.clientIp, socksBind)
+	ServeSocks5Mode1(client.ipStack, client.clientIp, socksBind)
 }
 
 func NewEasyConnectClientByLogin(vpnUrl *url.URL, username string, password string, twfId string, totpKey string, skipSsl bool) (*EasyConnectClient, error) {

@@ -23,7 +23,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 )
 
-func ServeSocks5(ipStack *stack.Stack, selfIp []byte, bindAddr string) {
+func ServeSocks5Mode1(ipStack *stack.Stack, selfIp []byte, bindAddr string) {
 
 	server := socks5.NewServer(
 		socks5.WithLogger(socks5.NewLogger(log.New(os.Stdout, "socks5: ", log.LstdFlags))),
@@ -71,7 +71,7 @@ func ServeSocks5(ipStack *stack.Stack, selfIp []byte, bindAddr string) {
 	panic(err)
 }
 
-func ServeSocks52(bindAddr string) {
+func ServeSocks5Mode2(bindAddr string) {
 
 	auth := NewCustomAuthenticator()
 	server := socks5.NewServer(
@@ -108,6 +108,9 @@ func ServeSocks52(bindAddr string) {
 			if !ok || client.IsClosed {
 				return nil, errors.New("upstream connect closed")
 			}
+
+			client.Touch()
+			auth.clientManager.Update(client, upstreamClientKey)
 
 			addrTarget := tcpip.FullAddress{
 				NIC:  defaultNIC,
@@ -147,10 +150,16 @@ var ()
 // CustomAuthenticator 实现了 socks5.Authenticator 接口
 type CustomAuthenticator struct {
 	UpstreamClientPool cmap.ConcurrentMap[string, *EasyConnectClient]
+	clientManager      *ClientPoolManager
 }
 
 func NewCustomAuthenticator() *CustomAuthenticator {
-	return &CustomAuthenticator{UpstreamClientPool: cmap.New[*EasyConnectClient]()}
+	auth := &CustomAuthenticator{
+		UpstreamClientPool: cmap.New[*EasyConnectClient](),
+		clientManager:      NewClientPoolManager(),
+	}
+	go auth.clientManager.StartCleaner(auth.UpstreamClientPool)
+	return auth
 }
 
 // Authenticate 实现基于 RFC 1929 的认证逻辑，并管理 easyconnect 容器
@@ -173,7 +182,7 @@ func (a *CustomAuthenticator) Authenticate(reader io.Reader, writer io.Writer, u
 	key := fmt.Sprintf("%s->->->%s", userInfo.VPNURL, userInfo.Username)
 	client, ok := a.UpstreamClientPool.Get(key)
 	if !ok || client.IsClosed {
-		fmt.Println("用户不存在")
+		fmt.Println("用户不存在，正在登录上游客户端")
 		tries := 3
 		for i := 0; i < tries; i++ {
 			client, err = NewEasyConnectClientByLogin(userInfo.VPNURL, userInfo.Username, userInfo.Password, "", "", userInfo.SkipSSL)
@@ -182,12 +191,17 @@ func (a *CustomAuthenticator) Authenticate(reader io.Reader, writer io.Writer, u
 					return nil, err
 				}
 				time.Sleep(time.Millisecond * 200)
+				log.Printf("出错了，正在重试...")
 			} else {
 				break
 			}
 		}
 		go client.StartProtocol(false)
 		a.UpstreamClientPool.Set(key, client)
+		client.IdleTimeout = userInfo.Timeout
+		client.MaxLifetime = 24 * time.Hour
+		client.Touch()
+		a.clientManager.Update(client, key)
 	}
 	fmt.Println("用户存在")
 	_, err = writer.Write([]byte{0x01, 0x00}) // success

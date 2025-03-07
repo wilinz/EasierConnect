@@ -30,7 +30,7 @@ func main() {
 	user := fmt.Sprintf("v=%s&u=%s", url.QueryEscape(vpnUrlRaw), url.QueryEscape(username))
 	fmt.Printf("socks5://%s:%s@localhost:%s\n", url.QueryEscape(user), password, port)
 	if mode == "2" {
-		core.ServeSocks52(socksBind)
+		core.ServeSocks5Mode2(socksBind)
 		return
 	}
 
