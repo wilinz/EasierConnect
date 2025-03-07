@@ -1,0 +1,63 @@
+name: Build and Release Desktop Go Platforms
+
+on:
+  push:
+    tags:
+      - '*'  # 任意 tag 推送时触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.23'  # 根据需要调整 Go 版本
+
+      - name: Build binaries for desktop platforms only (Linux, macOS, Windows)
+        env:
+          TAG: ${{ github.ref_name }}  # 当前 tag 版本，例如 v1.0.0
+        run: |
+          mkdir -p dist
+          # 获取所有 Go 支持的平台列表，过滤出常见平台和架构
+          go tool dist list | grep -E "^(linux|darwin|windows)/(amd64|arm64)$" | while read platform; do
+            GOOS=${platform%%/*}
+            GOARCH=${platform#*/}
+            binary="ecapp_gui_${TAG}_${GOOS}_${GOARCH}"
+            # 如果是 Windows 平台，追加 .exe 后缀
+            if [ "$GOOS" = "windows" ]; then
+              binary="${binary}.exe"
+            fi
+            echo "Building for $GOOS/$GOARCH: $binary"
+            GOOS=$GOOS GOARCH=$GOARCH go build -o "dist/$binary" gui/gui_entry.go
+          done
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Assets
+        env:
+          UPLOAD_URL: ${{ steps.create_release.outputs.upload_url }}
+        run: |
+          # 去除上传 URL 中的模板部分
+          UPLOAD_URL=$(echo "$UPLOAD_URL" | sed -e 's/{?name,label}//')
+          for file in dist/*; do
+            echo "Uploading $file..."
+            curl -s -X POST \
+                 -H "Content-Type: application/octet-stream" \
+                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                 --data-binary @"$file" \
+                 "${UPLOAD_URL}?name=$(basename "$file")"
+            echo ""
+          done
