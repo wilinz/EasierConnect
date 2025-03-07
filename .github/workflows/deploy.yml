@@ -5,6 +5,7 @@ name: Docker Build and Push
 # Please note: DOCKER_REGISTRY_URL secret must only contain the registry address and not the protocol part, e.g. it should be set to xxx.xxx.com/xxx, not https://xxx.xxx.com/xxx
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "*"
