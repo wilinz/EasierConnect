@@ -1,4 +1,4 @@
-name: Build and Release Desktop Go Platforms
+name: Build and Release Desktop Go Platforms GUI
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
               binary="${binary}.exe"
             fi
             echo "Building for $GOOS/$GOARCH: $binary"
-            GOOS=$GOOS GOARCH=$GOARCH go build -o "dist/$binary" gui/gui_entry.go
+            GOOS=$GOOS GOARCH=$GOARCH && go mod tidy && go build -o "dist/$binary" gui/gui_entry.go
           done
 
       - name: Create GitHub Release

@@ -32,7 +32,7 @@ jobs:
               binary="${binary}.exe"
             fi
             echo "Building for $GOOS/$GOARCH: $binary"
-            GOOS=$GOOS GOARCH=$GOARCH go build -o "dist/$binary" .
+            GOOS=$GOOS GOARCH=$GOARCH  && go mod tidy && go build -o "dist/$binary" .
           done
 
       - name: Create GitHub Release
