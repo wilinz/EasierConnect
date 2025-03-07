@@ -1,0 +1,39 @@
+name: Docker Build and Push
+# DOCKER_USERNAME
+# DOCKER_PASSWORD
+# DOCKER_REGISTRY_URL
+# Please note: DOCKER_REGISTRY_URL secret must only contain the registry address and not the protocol part, e.g. it should be set to xxx.xxx.com/xxx, not https://xxx.xxx.com/xxx
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY_URL }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Get Git Tag
+        id: get_tag
+        run: echo "TAG=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+
+      - name: Build and Push Docker image with version tag and latest
+        run: |
+          docker buildx build --platform linux/amd64 \
+            -t ${{ secrets.DOCKER_REGISTRY_URL }}/easierconnect-service:$TAG \
+            -t ${{ secrets.DOCKER_REGISTRY_URL }}/easierconnect-service:latest \
+            --push -f docker/Dockerfile .
