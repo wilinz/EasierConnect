@@ -1,4 +1,5 @@
-# EasierConnect 本程序为 EasyConnect 客户端的开源实现, 旨在帮助高校学生在校外访问校内资源, 没有绕过相关流量审计或安全审查的功能. EasyConnect 的一切权利属深信服所有
+# EasierConnect -> EasyConnect 客户端的开源实现
+本程序为 EasyConnect 客户端的开源实现, 旨在帮助高校学生在校外访问校内资源, 没有绕过相关流量审计或安全审查的功能. EasyConnect 的一切权利属深信服所有
 
 **注意事项：升级 gvisor 依赖时请使用 go get gvisor.dev/gvisor@go 这个版本，否则报错**
 
