@@ -35,11 +35,15 @@ type EasyConnectClient struct {
 	username string
 	password string
 
-	CreatedAt   time.Time     // 客户端创建时间（只读）
+	createdAt   time.Time     // 客户端创建时间（只读）
 	LastUsed    atomic.Int64  // 最后使用时间（UnixNano）
 	MaxLifetime time.Duration // 最大存活时间（硬限制）
 	IdleTimeout time.Duration // 空闲超时（来自认证参数）
 	IsClosed    bool
+}
+
+func (c *EasyConnectClient) CreatedAt() time.Time {
+	return c.createdAt
 }
 
 // Touch 更新最后使用时间（并发安全）
@@ -51,7 +55,7 @@ func (c *EasyConnectClient) IsExpired() bool {
 	now := time.Now()
 
 	// 最大生命周期检查
-	if now.Sub(c.CreatedAt) > c.MaxLifetime {
+	if now.Sub(c.createdAt) > c.MaxLifetime {
 		return true
 	}
 
@@ -81,7 +85,7 @@ func NewEasyConnectClient(vpnUrl *url.URL, insecureSkipVerify bool) *EasyConnect
 		httpClient: createRestyClient(vpnUrl.String(), insecureSkipVerify, cookieJar),
 		ctx:        ctx,
 		cancelFunc: cancel,
-		CreatedAt:  time.Now(),
+		createdAt:  time.Now(),
 	}
 }
 

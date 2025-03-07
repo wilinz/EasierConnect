@@ -32,7 +32,7 @@ func NewClientPoolManager() *ClientPoolManager {
 func (m *ClientPoolManager) Update(client *EasyConnectClient, key string) {
 	expireAt := time.Now().Add(client.IdleTimeout)
 	if client.MaxLifetime < client.IdleTimeout {
-		expireAt = client.CreatedAt.Add(client.MaxLifetime)
+		expireAt = client.createdAt.Add(client.MaxLifetime)
 	}
 
 	m.mu.Lock()
@@ -77,8 +77,8 @@ func (m *ClientPoolManager) cleanExpired(pool cmap.ConcurrentMap[string, *EasyCo
 				pool.Remove(poppedItem.Key)
 			} else {
 				newExpire := time.Now().Add(client.IdleTimeout)
-				if client.CreatedAt.Add(client.MaxLifetime).Before(newExpire) {
-					newExpire = client.CreatedAt.Add(client.MaxLifetime)
+				if client.createdAt.Add(client.MaxLifetime).Before(newExpire) {
+					newExpire = client.createdAt.Add(client.MaxLifetime)
 				}
 				m.queue.Push(pqItem{
 					Key:      poppedItem.Key,
