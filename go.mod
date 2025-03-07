@@ -1,6 +1,6 @@
 module EasierConnect
 
-go 1.19
+go 1.20
 
 require github.com/refraction-networking/utls v1.2.0
 
@@ -11,7 +11,6 @@ require (
 	github.com/go-resty/resty/v2 v2.16.5
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	gvisor.dev/gvisor v0.0.0-20220901235040-6ca97ef2ce1c
-	tailscale.com v1.34.2
 )
 
 require (
@@ -43,12 +42,12 @@ require (
 	github.com/tevino/abool v1.2.0 // indirect
 	github.com/things-go/go-socks5 v0.0.5 // indirect
 	github.com/yuin/goldmark v1.4.1 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/image v0.0.0-20220601225756-64ec528b34cd // indirect
 	golang.org/x/mobile v0.0.0-20211207041440-4e6c2922fdee // indirect
 	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/js/dom v0.0.0-20210725211120-f030747120f2 // indirect

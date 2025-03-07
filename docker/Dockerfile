@@ -1,5 +1,5 @@
 # 第一阶段：编译阶段
-FROM golang:1.19-alpine AS builder
+FROM golang:1.20-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
