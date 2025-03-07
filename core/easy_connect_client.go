@@ -5,13 +5,13 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"github.com/pquerna/otp/totp"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
+	"resty.dev/v3"
 	"sync/atomic"
 	"time"
 )
@@ -131,7 +131,7 @@ func (client *EasyConnectClient) Close() error {
 
 	// 关闭HTTP客户端的空闲连接
 	if client.httpClient != nil {
-		client.httpClient.GetClient().CloseIdleConnections()
+		client.httpClient.Close()
 	}
 
 	// 合并错误信息

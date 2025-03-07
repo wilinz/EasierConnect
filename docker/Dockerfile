@@ -1,5 +1,5 @@
 # 第一阶段：编译阶段
-FROM golang:1.20-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . .
 RUN go mod download
 RUN go mod tidy
-RUN go build -o ecapp .
+RUN go build -o ecapp main.go
 
 # 第二阶段：运行阶段
 FROM alpine:latest

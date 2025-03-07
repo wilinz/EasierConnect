@@ -48,12 +48,12 @@ func ServeSocks5Mode1(ipStack *stack.Stack, selfIp []byte, bindAddr string) {
 			addrTarget := tcpip.FullAddress{
 				NIC:  defaultNIC,
 				Port: uint16(port),
-				Addr: tcpip.Address(target.IP),
+				Addr: tcpip.AddrFromSlice(target.IP),
 			}
 
 			bind := tcpip.FullAddress{
 				NIC:  defaultNIC,
-				Addr: tcpip.Address(selfIp),
+				Addr: tcpip.AddrFromSlice(selfIp),
 			}
 
 			return gonet.DialTCPWithBind(ctx, ipStack, bind, addrTarget, header.IPv4ProtocolNumber)
@@ -115,12 +115,12 @@ func ServeSocks5Mode2(bindAddr string) {
 			addrTarget := tcpip.FullAddress{
 				NIC:  defaultNIC,
 				Port: uint16(port),
-				Addr: tcpip.Address(target.IP),
+				Addr: tcpip.AddrFromSlice(target.IP),
 			}
 
 			bind := tcpip.FullAddress{
 				NIC:  defaultNIC,
-				Addr: tcpip.Address(client.clientIp),
+				Addr: tcpip.AddrFromSlice(client.clientIp),
 			}
 
 			return gonet.DialTCPWithBind(context.Background(), client.ipStack, bind, addrTarget, header.IPv4ProtocolNumber)

@@ -1,6 +1,8 @@
 module EasierConnect
 
-go 1.20
+go 1.23.1
+
+toolchain go1.23.7
 
 require github.com/refraction-networking/utls v1.2.0
 
@@ -8,9 +10,11 @@ require github.com/pquerna/otp v1.4.0
 
 require (
 	fyne.io/fyne/v2 v2.3.0
-	github.com/go-resty/resty/v2 v2.16.5
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
-	gvisor.dev/gvisor v0.0.0-20220901235040-6ca97ef2ce1c
+	github.com/orcaman/concurrent-map/v2 v2.0.1
+	github.com/things-go/go-socks5 v0.0.5
+	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
+	gvisor.dev/gvisor v0.0.0-20250307022919-35e47cb01460
+	resty.dev/v3 v3.0.0-beta.2
 )
 
 require (
@@ -33,14 +37,11 @@ require (
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/klauspost/compress v1.15.12 // indirect
-	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/robfig/cron/v3 v3.0.0 // indirect
 	github.com/srwiley/oksvg v0.0.0-20220731023508-a61f04f16b76 // indirect
 	github.com/srwiley/rasterx v0.0.0-20210519020934-456a8d69b780 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/tevino/abool v1.2.0 // indirect
-	github.com/things-go/go-socks5 v0.0.5 // indirect
 	github.com/yuin/goldmark v1.4.1 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/image v0.0.0-20220601225756-64ec528b34cd // indirect
