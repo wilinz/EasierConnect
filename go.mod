@@ -18,7 +18,7 @@ require (
 )
 
 require (
-	fyne.io/systray v1.10.1-0.20221115204952-d16a6177e6f1 // indirect
+	fyne.io/systray v1.11.0 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/benoitkugler/textlayout v0.3.0 // indirect
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect

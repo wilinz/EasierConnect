@@ -4,11 +4,13 @@ import (
 	"EasierConnect/core"
 	"fmt"
 	"log"
+	"net/url"
 )
 
 func Process(host, port, username, password, socksBind string) {
 	server := fmt.Sprintf("%s:%s", host, port)
-	client := core.NewEasyConnectClient(server)
+	uri, _ := url.Parse(server)
+	client := core.NewEasyConnectClient(uri, false)
 
 	var ip []byte
 	var err error
