@@ -190,7 +190,7 @@ func (a *CustomAuthenticator) Authenticate(reader io.Reader, writer io.Writer, u
 				if i == tries-1 {
 					return nil, err
 				}
-				time.Sleep(time.Millisecond * 200)
+				time.Sleep(time.Millisecond * 1000)
 				log.Printf("出错了，正在重试...")
 			} else {
 				break
