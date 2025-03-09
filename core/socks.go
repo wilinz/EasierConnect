@@ -56,7 +56,10 @@ func ServeSocks5Mode1(ipStack *stack.Stack, selfIp []byte, bindAddr string) {
 				Addr: tcpip.AddrFromSlice(selfIp),
 			}
 
-			return gonet.DialTCPWithBind(ctx, ipStack, bind, addrTarget, header.IPv4ProtocolNumber)
+			conn, err := gonet.DialTCPWithBind(context.Background(), ipStack, bind, addrTarget, header.IPv4ProtocolNumber)
+			err = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+			err = conn.SetReadDeadline(time.Now().Add(readTimeout))
+			return conn, err
 		}),
 	)
 
@@ -123,7 +126,10 @@ func ServeSocks5Mode2(bindAddr string) {
 				Addr: tcpip.AddrFromSlice(client.clientIp),
 			}
 
-			return gonet.DialTCPWithBind(context.Background(), client.ipStack, bind, addrTarget, header.IPv4ProtocolNumber)
+			conn, err := gonet.DialTCPWithBind(context.Background(), client.ipStack, bind, addrTarget, header.IPv4ProtocolNumber)
+			err = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+			err = conn.SetReadDeadline(time.Now().Add(readTimeout))
+			return conn, err
 		}),
 	)
 

@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"runtime/debug"
+	"time"
 
 	tls "github.com/refraction-networking/utls"
 )
@@ -23,26 +24,26 @@ func DumpHex(buf []byte) {
 
 func TLSConn(server string, insecureSkipVerify bool) (*tls.UConn, error) {
 	// dial vpn server
-	dialConn, err := net.Dial("tcp", server)
+	dialConn, err := net.DialTimeout("tcp", server, dialTimeout)
 	if err != nil {
 		return nil, err
 	}
 	log.Println("socket: connected to: ", dialConn.RemoteAddr())
 
 	// using uTLS to construct a weird TLS Client Hello (required by Sangfor)
-	// The VPN and HTTP Server share port 443, Sangfor uses a special SessionId to distinguish them. (which is very stupid...)
-	// InsecureSkipVerify must is true
 	conn := tls.UClient(dialConn, &tls.Config{InsecureSkipVerify: true}, tls.HelloCustom)
 
 	random := make([]byte, 32)
-	rand.Read(random) // Ignore the err
+	rand.Read(random) // 忽略错误
 	conn.SetClientRandom(random)
 	conn.SetTLSVers(tls.VersionTLS11, tls.VersionTLS11, []tls.TLSExtension{})
 	conn.HandshakeState.Hello.Vers = tls.VersionTLS11
 	conn.HandshakeState.Hello.CipherSuites = []uint16{tls.TLS_RSA_WITH_RC4_128_SHA, tls.FAKE_TLS_EMPTY_RENEGOTIATION_INFO_SCSV}
 	conn.HandshakeState.Hello.CompressionMethods = []uint8{0}
 	conn.HandshakeState.Hello.SessionId = []byte{'L', '3', 'I', 'P', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-
+	err = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+	err = conn.SetReadDeadline(time.Now().Add(readTimeout))
+	return conn, err
 	log.Println("tls: connected to: ", conn.RemoteAddr())
 
 	return conn, nil
@@ -54,7 +55,6 @@ func QueryIp(server string, token *[48]byte, insecureSkipVerify bool) ([]byte, *
 		debug.PrintStack()
 		return nil, nil, err
 	}
-	// defer conn.Close()
 	// Query IP conn CAN NOT be closed, otherwise tx/rx handshake will fail
 
 	// QUERY IP PACKET
@@ -96,7 +96,7 @@ func BlockRXStream(server string, token *[48]byte, ipRev *[4]byte, ep *EasyConne
 	}
 	defer conn.Close()
 
-	// RECV STREAM START
+	// RECV STREAM START handshake
 	message := []byte{0x06, 0x00, 0x00, 0x00}
 	message = append(message, token[:]...)
 	message = append(message, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}...)
@@ -151,7 +151,7 @@ func BlockTXStream(server string, token *[48]byte, ipRev *[4]byte, ep *EasyConne
 	}
 	defer conn.Close()
 
-	// SEND STREAM START
+	// SEND STREAM START handshake
 	message := []byte{0x05, 0x00, 0x00, 0x00}
 	message = append(message, token[:]...)
 	message = append(message, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}...)
@@ -192,7 +192,7 @@ func BlockTXStream(server string, token *[48]byte, ipRev *[4]byte, ep *EasyConne
 
 			if debug {
 				log.Printf("send: wrote %d bytes", n)
-				DumpHex([]byte(buf[:n]))
+				DumpHex(buf[:n])
 			}
 		}
 	}
