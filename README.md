@@ -1,4 +1,4 @@
-# EasierConnect
+# EasierConnect 本项目是 EasyConnect 的开源实现
 
 **注意事项：升级 gvisor 依赖时请使用 go get gvisor.dev/gvisor@go 这个版本，否则报错**
 
@@ -9,4 +9,4 @@
 
 ---
 
-## 编译环境 Go 1.19 或者 1.20，使用 Go 1.23 可能会导致 gvisor 库报错
+## 编译环境 Go 1.23
